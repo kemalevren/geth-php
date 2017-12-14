@@ -1,0 +1,29 @@
+{
+  "name": "kemalevren/geth-php",
+  "description": "A PHP wrapper to the geth JSON-RPC API.",
+  "keywords": [
+    "geth",
+    "php",
+    "eth"
+  ],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Kemal Evren",
+      "email": "hi@kemalevren.com"
+    }
+  ],
+  "type": "project",
+  "require": {
+    "php": ">=7.0",
+    "guzzlehttp/guzzle": "~3.8"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "6.5.*"
+  },
+  "autoload": {
+    "psr-4": {
+      "kemalevren\\Geth\\": "src/"
+    }
+  }
+}
