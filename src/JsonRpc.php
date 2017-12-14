@@ -56,6 +56,23 @@ class JsonRpc
         return $this->_id;
     }
 
+    public function setOptions($options = null)
+    {
+        if ($options) {
+            if (!is_array($options)) {
+                if (is_int($options)) {
+                    $options = ['port' => $options];
+                }
+            }
+        } else {
+            $options = [];
+        }
+
+        $this->_options = array_merge(self::$_defaultOptions, $options);
+        $this->_address = 'http://' . $this->_options['host'] . ':' . $this->_options['port'];
+        $this->_client = new Client();
+    }
+
     /**
      * Magic handler for RPC methods
      * @param string $name
