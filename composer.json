@@ -33,7 +33,7 @@
         "kemalevren\\Geth\\Laravel5\\GethPhpServiceProvider"
       ],
       "aliases": {
-        "JsonRpc": "kemalevren\\Geth\\Laravel5\\GethPhpFacade"
+        "JsonRpc": "kemalevren\\Geth\\Laravel5\\Facades\\JsonRpc"
       }
     }
   }

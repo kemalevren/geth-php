@@ -19,6 +19,6 @@ class GethPhpServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->bind('json-rpc', 'kemalevren\Geth\JsonRpc');
+        $this->app->bind('JsonRpc', 'kemalevren\Geth\JsonRpc');
     }
 }

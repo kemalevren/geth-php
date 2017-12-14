@@ -6,11 +6,11 @@
  * Time: 18:33
  */
 
-namespace kemalevren\Geth\Laravel5;
+namespace kemalevren\Geth\Laravel5\Facades;
 
 use Illuminate\Support\Facades\Facade;
 
-class GethPhpFacade extends Facade {
+class JsonRpc extends Facade {
     /**
      * Get the registered name of the component.
      *
@@ -18,6 +18,6 @@ class GethPhpFacade extends Facade {
      */
     protected static function getFacadeAccessor()
     {
-        return 'json-rpc';
+        return 'JsonRpc';
     }
-} 
+}
