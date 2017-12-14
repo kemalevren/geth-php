@@ -8,24 +8,23 @@
 
 namespace kemalevren\Geth;
 
-use Guzzle\Http\Client;
+use Exception;
+use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\Request;
 
 class JsonRpc
 {
     protected static $_defaultOptions = [
-        // Geth JSON-RPC version
         'version' => '2.0',
-        // Host part of address
         'host' => '127.0.0.1',
-        // Port part of address
         'port' => 8545,
-        // Return results as associative arrays instead of objects
         'assoc' => true
     ];
     protected $_options = [];
     protected $_address = null;
     protected $_id = 0;
-    protected $client = null;
+    protected $_request = null;
+    protected $_client;
 
     /**
      * Service constructor.
@@ -37,25 +36,15 @@ class JsonRpc
             if (!is_array($options)) {
                 if (is_int($options)) {
                     $options = ['port' => $options];
-                } else {
-                    if (preg_match('/^([^\:]+)\:([\d]+)$/', $options, $match)) {
-                        $options = ['host' => $match[1], 'port' => $match[2]];
-                    } else {
-                        $options = ['host' => $options];
-                    }
                 }
             }
         } else {
             $options = [];
         }
+
         $this->_options = array_merge(self::$_defaultOptions, $options);
         $this->_address = 'http://' . $this->_options['host'] . ':' . $this->_options['port'];
-        $this->client = Client([
-            // Base URI is used with relative requests
-            'base_uri' => $this->_address,
-            // You can set any number of default request options.
-            'timeout'  => 2.0
-        ]);
+        $this->_client = new Client();
     }
 
     /**
@@ -70,11 +59,11 @@ class JsonRpc
     /**
      * Magic handler for RPC methods
      * @param string $name
-     * @param string $method
      * @param array $arguments
      * @return mixed
+     * @throws Exception
      */
-    public function __call($name, $method = 'POST', $arguments = [])
+    public function __call($name, $arguments = [])
     {
         $id = ++$this->_id;
         $data = [
@@ -89,46 +78,31 @@ class JsonRpc
             'Content-Length' => strlen($json)
         ];
 
-        $response = $this->client->request($method, $headers, ['body' => $json]);
+        $this->_request = new Request('POST', $this->_address, $headers, $json);
+        $response = json_decode($this->_client->send($this->_request)->getBody()->getContents(), $this->_options['assoc']);
 
-        print_r($response);
-        exit;
-
-        $curl = curl_init($this->_address);
-        curl_setopt($curl, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_POSTFIELDS, $json);
-        curl_setopt($curl, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Content-Length: ' . strlen($json)
-        ]);
-        $result = curl_exec($curl);
-        if (!$result) {
-            throw new \RuntimeException(curl_error($curl), curl_errno($curl));
-        }
-        curl_close($curl);
-        $data = json_decode($result, $this->_options['assoc']);
         if ($this->_options['assoc']) {
-            if (isset($data['error'])) {
-                throw new Exception($data['error']['message'], $data['error']['code']);
+            if (isset($response['error'])) {
+                throw new Exception($response['error']['message'], $response['error']['code']);
             }
-            if (!array_key_exists('result', $data)) {
+            if (!array_key_exists('result', $response)) {
                 return null;
             }
-            return $data['result'];
+            return $response['result'];
         } else {
-            if (isset($data->error)) {
-                throw new Exception($data->error->message, $data->error->code);
+            if (isset($response->error)) {
+                throw new Exception($response->error->message, $response->error->code);
             }
-            if (!array_key_exists('result', $data)) {
+            if (!array_key_exists('result', $response)) {
                 return null;
             }
-            return $data->result;
+            return $response->result;
         }
     }
 
     /**
-     * @inheritDoc
+     * @return float|int
+     * @throws Exception
      */
     function net_peerCount()
     {
@@ -136,7 +110,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return mixed
+     * @throws Exception
      */
     function eth_syncing()
     {
@@ -148,7 +123,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return float|int
+     * @throws Exception
      */
     function eth_hashrate()
     {
@@ -156,7 +132,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return float|int
+     * @throws Exception
      */
     function eth_gasPrice()
     {
@@ -164,7 +141,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return float|int
+     * @throws Exception
      */
     function eth_blockNumber()
     {
@@ -172,7 +150,10 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $address
+     * @param string $tag
+     * @return float|int
+     * @throws Exception
      */
     function eth_getBalance($address, $tag = 'latest')
     {
@@ -180,7 +161,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $address
+     * @return float|int
+     * @throws Exception
      */
     function eth_getTransactionCount($address)
     {
@@ -188,7 +171,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $hash
+     * @return float|int
+     * @throws Exception
      */
     function eth_getBlockTransactionCountByHash($hash)
     {
@@ -196,7 +181,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $tag
+     * @return float|int
+     * @throws Exception
      */
     function eth_getBlockTransactionCountByNumber($tag)
     {
@@ -204,7 +191,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $hash
+     * @return float|int
+     * @throws Exception
      */
     function eth_getUncleCountByBlockHash($hash)
     {
@@ -212,7 +201,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $tag
+     * @return float|int
+     * @throws Exception
      */
     function eth_getUncleCountByBlockNumber($tag)
     {
@@ -220,7 +211,10 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $transaction
+     * @param $tag
+     * @return float|int
+     * @throws Exception
      */
     function eth_estimateGas($transaction, $tag)
     {
@@ -228,7 +222,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $options
+     * @return float|int
+     * @throws Exception
      */
     function eth_newFilter($options)
     {
@@ -236,7 +232,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return float|int
+     * @throws Exception
      */
     function eth_newBlockFilter()
     {
@@ -244,7 +241,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return float|int
+     * @throws Exception
      */
     function eth_newPendingTransactionFilter()
     {
@@ -252,7 +250,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $options
+     * @return float|int
+     * @throws Exception
      */
     function shh_newFilter($options)
     {
@@ -260,7 +260,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return mixed
+     * @throws Exception
      */
     function web3_clientVersion()
     {
@@ -268,7 +269,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $data
+     * @return mixed
+     * @throws Exception
      */
     function web3_sha3($data)
     {
@@ -276,7 +279,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return mixed
+     * @throws Exception
      */
     function net_version()
     {
@@ -284,7 +288,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return mixed
+     * @throws Exception
      */
     function net_listening()
     {
@@ -292,7 +297,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return float|int
+     * @throws Exception
      */
     function eth_protocolVersion()
     {
@@ -300,7 +306,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return mixed
+     * @throws Exception
      */
     function eth_coinbase()
     {
@@ -308,7 +315,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return mixed
+     * @throws Exception
      */
     function eth_mining()
     {
@@ -316,7 +324,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return mixed
+     * @throws Exception
      */
     function eth_accounts()
     {
@@ -324,7 +333,11 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $address
+     * @param $quantity
+     * @param $tag
+     * @return mixed
+     * @throws Exception
      */
     function eth_getStorageAt($address, $quantity, $tag)
     {
@@ -332,7 +345,10 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $address
+     * @param $tag
+     * @return mixed
+     * @throws Exception
      */
     function eth_getCode($address, $tag)
     {
@@ -340,7 +356,10 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $account
+     * @param $message
+     * @return mixed
+     * @throws Exception
      */
     function eth_sign($account, $message)
     {
@@ -348,7 +367,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $transaction
+     * @return mixed
+     * @throws Exception
      */
     function eth_sendTransaction($transaction)
     {
@@ -356,7 +377,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $data
+     * @return mixed
+     * @throws Exception
      */
     function eth_sendRawTransaction($data)
     {
@@ -364,7 +387,10 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $transaction
+     * @param $tag
+     * @return mixed
+     * @throws Exception
      */
     function eth_call($transaction, $tag)
     {
@@ -372,7 +398,10 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $hash
+     * @param $full
+     * @return mixed
+     * @throws Exception
      */
     function eth_getBlockByHash($hash, $full)
     {
@@ -388,7 +417,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return mixed
+     * @throws Exception
      */
     function eth_getTransactionByHash()
     {
@@ -396,7 +426,10 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $hash
+     * @param $quantity
+     * @return mixed
+     * @throws Exception
      */
     function eth_getTransactionByBlockHashAndIndex($hash, $quantity)
     {
@@ -404,7 +437,10 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $tag
+     * @param $quantity
+     * @return mixed
+     * @throws Exception
      */
     function eth_getTransactionByBlockNumberAndIndex($tag, $quantity)
     {
@@ -412,7 +448,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $hash
+     * @return mixed
+     * @throws Exception
      */
     function eth_getTransactionReceipt($hash)
     {
@@ -420,7 +458,10 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $hash
+     * @param $quantity
+     * @return mixed
+     * @throws Exception
      */
     function eth_getUncleByBlockHashAndIndex($hash, $quantity)
     {
@@ -428,7 +469,10 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $tag
+     * @param $position
+     * @return mixed
+     * @throws Exception
      */
     function eth_getUncleByBlockNumberAndIndex($tag, $position)
     {
@@ -436,7 +480,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return mixed
+     * @throws Exception
      */
     function eth_getCompilers()
     {
@@ -444,7 +489,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $code
+     * @return mixed
+     * @throws Exception
      */
     function eth_compileSolidity($code)
     {
@@ -452,7 +499,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $code
+     * @return mixed
+     * @throws Exception
      */
     function eth_compileLLL($code)
     {
@@ -460,7 +509,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $code
+     * @return mixed
+     * @throws Exception
      */
     function eth_compileSerpent($code)
     {
@@ -468,7 +519,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $id
+     * @return mixed
+     * @throws Exception
      */
     function eth_uninstallFilter($id)
     {
@@ -476,7 +529,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $id
+     * @return mixed
+     * @throws Exception
      */
     function eth_getFilterChanges($id)
     {
@@ -484,7 +539,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $id
+     * @return mixed
+     * @throws Exception
      */
     function eth_getFilterLogs($id)
     {
@@ -492,7 +549,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $options
+     * @return mixed
+     * @throws Exception
      */
     function eth_getLogs($options)
     {
@@ -508,7 +567,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $work
+     * @return mixed
+     * @throws Exception
      */
     function eth_submitWork($work)
     {
@@ -516,7 +577,10 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $hashrate
+     * @param $id
+     * @return mixed
+     * @throws Exception
      */
     function eth_submitHashrate($hashrate, $id)
     {
@@ -524,7 +588,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return mixed
+     * @throws Exception
      */
     function shh_version()
     {
@@ -532,7 +597,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $message
+     * @return mixed
+     * @throws Exception
      */
     function shh_post($message)
     {
@@ -540,7 +607,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return mixed
+     * @throws Exception
      */
     function shh_newIdentity()
     {
@@ -548,7 +616,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $identity
+     * @return mixed
+     * @throws Exception
      */
     function shh_hasIdentity($identity)
     {
@@ -556,7 +626,8 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @return mixed
+     * @throws Exception
      */
     function shh_newGroup()
     {
@@ -564,7 +635,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $identity
+     * @return mixed
+     * @throws Exception
      */
     function shh_addToGroup($identity)
     {
@@ -572,7 +645,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $id
+     * @return mixed
+     * @throws Exception
      */
     function shh_uninstallFilter($id)
     {
@@ -580,7 +655,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $id
+     * @return mixed
+     * @throws Exception
      */
     function shh_getFilterChanges($id)
     {
@@ -588,7 +665,9 @@ class JsonRpc
     }
 
     /**
-     * @inheritDoc
+     * @param $id
+     * @return mixed
+     * @throws Exception
      */
     function shh_getMessages($id)
     {
