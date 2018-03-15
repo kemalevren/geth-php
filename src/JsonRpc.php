@@ -18,7 +18,9 @@ class JsonRpc
         'version' => '2.0',
         'host' => '127.0.0.1',
         'port' => 8545,
-        'assoc' => true
+        'assoc' => true,
+        'connect_timeout' => 2,
+        'timeout' => 10
     ];
     protected $_options = [];
     protected $_address = null;
@@ -80,7 +82,7 @@ class JsonRpc
      * @return mixed
      * @throws Exception
      */
-    public function __call($name, $arguments = [], $options = [])
+    public function __call($name, $arguments = [])
     {
         $id = ++$this->_id;
         $data = [
@@ -96,7 +98,10 @@ class JsonRpc
         ];
 
         $this->_request = new Request('POST', $this->_address, $headers, $json);
-        $response = json_decode($this->_client->send($this->_request, $options)->getBody()->getContents(), $this->_options['assoc']);
+        $response = json_decode($this->_client->send($this->_request, [
+            "connect_timeout" => $this->_options["connect_timeout"],
+            "timeout" => $this->_options["timeout"]
+        ])->getBody()->getContents(), $this->_options['assoc']);
 
         if ($this->_options['assoc']) {
             if (isset($response['error'])) {
