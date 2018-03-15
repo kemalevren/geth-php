@@ -80,7 +80,7 @@ class JsonRpc
      * @return mixed
      * @throws Exception
      */
-    public function __call($name, $arguments = [])
+    public function __call($name, $arguments = [], $options = [])
     {
         $id = ++$this->_id;
         $data = [
@@ -96,7 +96,7 @@ class JsonRpc
         ];
 
         $this->_request = new Request('POST', $this->_address, $headers, $json);
-        $response = json_decode($this->_client->send($this->_request)->getBody()->getContents(), $this->_options['assoc']);
+        $response = json_decode($this->_client->send($this->_request, $options)->getBody()->getContents(), $this->_options['assoc']);
 
         if ($this->_options['assoc']) {
             if (isset($response['error'])) {
