@@ -107,7 +107,7 @@ class JsonRpc
             if (isset($response['error'])) {
                 throw new Exception($response['error']['message'], $response['error']['code']);
             }
-            if (!array_key_exists('result', $response)) {
+            if (!is_array($response) && !array_key_exists('result', $response)) {
                 return null;
             }
             return $response['result'];
